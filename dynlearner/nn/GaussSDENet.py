@@ -39,7 +39,7 @@ class SDENet(DynNN):
     
     def dvf(self, x):
         x_a = x.requires_grad_(True)
-        return grad(self.modus['f'](x_a), x_a)        
+        return grad(self.modus['f'](x_a), x_a, keepdim=True)        
         
     def sigma(self, x):
         return self.modus['sigma'](x)
@@ -52,6 +52,7 @@ class LinearSigma(Module):
         self.dim = dim
         self.sigma = nn.Parameter((torch.randn([dim, dim]) * 0.5+0.5).requires_grad_(True))
         
+#         self.sigma=torch.tensor([[1.]])
         
     def forward(self, x):
         return self.sigma.expand([x.shape[0], self.dim, self.dim])
@@ -98,6 +99,22 @@ class TrilSigma(Module):
         tril = self.modus['trilnet'](x).reshape(shape)
         return torch.diag_embed(posi_diag)+ torch.tril(tril, diagonal=-1)
 
+class TrilLinearSigma(Module):
+    def __init__(self, dim):
+        super(TrilLinearSigma, self).__init__()
+        self.dim = dim
+        self.tril = nn.Parameter((torch.randn([dim, dim]) * 0.5+0.5).requires_grad_(True))
+        self.diag = nn.Parameter((torch.randn([dim]) * 0.5+0.5).requires_grad_(True))
+        
+    def sigma(self):
+        posi_diag = (torch.sqrt(self.diag**2+1) + self.diag)/2
+        sigma = torch.diag_embed(posi_diag)+ torch.tril(self.tril, diagonal=-1)
+        return sigma
+    
+    def forward(self, x):
+        posi_diag = (torch.sqrt(self.diag**2+1) + self.diag)/2
+        sigma = torch.diag_embed(posi_diag)+ torch.tril(self.tril, diagonal=-1)
+        return sigma.expand([x.shape[0], self.dim, self.dim])    
 
 
 class MGaussSDENet(SDENet):
@@ -140,7 +157,6 @@ class MGaussSDENet(SDENet):
     def criterion(self, x0, x1):
         Mga = MGaussAppro(self.vf, self.dvf, self.sigma, st=self.st, sN = self.sN)
         m, P, W= Mga.solverTL(x0, [self.timestep]*x1.shape[0])
- 
         logdensity = 0
         for i in range(x1.shape[0]):
             Den = MGaussDensity(m[i], P[i], W[i])
@@ -157,7 +173,7 @@ class NMGaussSDENet(SDENet):
     '''GaussSDENnet using algorithm 2
     '''
     def __init__(self, dim=2, timestep=0.1,
-                 layers=2, width=128, activation='tanh', initializer='orthogonal', linear_sigma=True,
+                 layers=2, width=128, activation='tanh', initializer='orthogonal', linear_sigma=False,
                  sigmalayers=2, sigmawidth=50, 
                  st=1):
         super(NMGaussSDENet, self).__init__()
@@ -182,22 +198,35 @@ class NMGaussSDENet(SDENet):
     def __init_modules(self):
         modules = torch.nn.ModuleDict()
         modules['f'] = FNN(self.dim, self.dim, self.layers, self.width, self.activation, self.initializer)
-        modules['sigma'] = NLinearSigma(self.dim) if self.linear_sigma else TrilSigma(self.dim, self.sigmalayers, self.sigmawidth, self.activation)
+        modules['sigma'] = TrilLinearSigma(self.dim) if self.linear_sigma else TrilSigma(self.dim, self.sigmalayers, self.sigmawidth, self.activation)
         
 
         return modules 
     
-    def criterion(self, x0, x1):
-        NMga = NMGaussAppro(self.vf, self.dvf, self.sigma, st=self.st)
+    def criterion1(self, x0, x1):
+        NMga = NMGaussAppro(self.vf, self.sigma, st=self.st)
         m, sqrtP, W= NMga.solverTL(x0, [self.timestep]*x1.shape[0])
- 
+        print(m[0][0,0])
+        
+        Mga = MGaussAppro(self.vf, self.dvf, self.sigma, st=self.st, sN =1)
+        m1, P1, W1= Mga.solverTL(x0, [self.timestep]*x1.shape[0])  
+        print(m1[0][0,0])
+        
         logdensity = 0
         for i in range(x1.shape[0]):
             Den = NMGaussDensity(m[i], sqrtP[i], W[i])
             logdensity = logdensity + Den.SafeLogDensity(x1[i]).mean()
         return -logdensity/x1.shape[0]
      
-       
+    def criterion(self, x0, x1): 
+        Mga = MGaussAppro(self.vf, self.dvf, self.sigma, st=self.st, sN =1)
+        m, P, W= Mga.solverTL(x0, [self.timestep]*x1.shape[0])
+        
+        logdensity = 0
+        for i in range(x1.shape[0]):
+            Den = MGaussDensity(m[i], P[i], W[i])
+            logdensity = logdensity + Den.SafeLogDensity(x1[i]).mean()
+        return -logdensity/x1.shape[0]       
         
 
 class EMSDENet(SDENet):
