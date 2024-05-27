@@ -118,7 +118,7 @@ class TrilLinearSigma(Module):
 
 
 class MGaussSDENet(SDENet):
-    '''GaussSDENnet using algorithm 1
+    '''GaussSDENet using algorithm 1
     '''
     def __init__(self, dim=2, timestep=0.1,
                  layers=2, width=128, activation='tanh', initializer='orthogonal', linear_sigma=True,
@@ -170,7 +170,7 @@ class MGaussSDENet(SDENet):
     
     
 class NMGaussSDENet(SDENet):
-    '''GaussSDENnet using algorithm 2
+    '''GaussSDENet using algorithm 2
     '''
     def __init__(self, dim=2, timestep=0.1,
                  layers=2, width=128, activation='tanh', initializer='orthogonal', linear_sigma=False,
@@ -230,7 +230,7 @@ class NMGaussSDENet(SDENet):
         
 
 class EMSDENet(SDENet):
-    '''GaussSDENnet
+    '''SDENet - EM
     '''
     def __init__(self, dim=2, timestep=0.1,
                  layers=2, width=128, activation='tanh', initializer='orthogonal', 
@@ -267,7 +267,7 @@ class EMSDENet(SDENet):
     
     
 class GaussCubSDENet(SDENet):
-    '''SDENnet - Gauss Cubture
+    '''SDENet - Gauss Cubture
     '''
     def __init__(self, dim=2, timestep=0.1, N=4,
                  layers=2, width=128, activation='tanh', initializer='orthogonal', 
@@ -304,13 +304,5 @@ class GaussCubSDENet(SDENet):
 
     
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
     
