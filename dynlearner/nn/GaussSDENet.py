@@ -38,8 +38,9 @@ class SDENet(DynNN):
         return self.modus['f'](x)
     
     def dvf(self, x):
-        x_a = x.requires_grad_(True)
-        return grad(self.modus['f'](x_a), x_a, keepdim=True)        
+        with torch.enable_grad():
+            x_a = x.requires_grad_(True)
+            return grad(self.modus['f'](x_a), x_a, keepdim=True)        
         
     def sigma(self, x):
         return self.modus['sigma'](x)
