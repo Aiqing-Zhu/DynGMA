@@ -24,10 +24,11 @@ class HNN(ODENet):
         res = np.eye(self.dim, k=d) - np.eye(self.dim, k=-d)
         return torch.tensor(res, dtype=self.Dtype, device=self.Device)
 
-    def vf(self, x): 
-        x_0 = x.requires_grad_(True)
-        gradH = grad(self.modus['H'](x_0), x_0)
-        vf = gradH @ self.J
+    def vf(self, x):
+        with torch.enable_grad():
+            x_0 = x.requires_grad_(True)
+            gradH = grad(self.modus['H'](x_0), x_0)
+            vf = gradH @ self.J
         return vf
     
     def __init_modules(self):
